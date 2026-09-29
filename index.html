@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Uttoron 2026 pictures</title>
+  <meta name="description" content="2026 photographs from Uttoron in Greater Seattle, grouped by event.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <div class="bar">
+      <a class="brand" href="https://www.uttoron.org">Uttoron</a>
+      <p class="tag">Upliftment · Greater Seattle</p>
+    </div>
+    <div class="sub">
+      <strong>2026 pictures</strong>
+      <a href="https://www.uttoron.org">uttoron.org</a>
+    </div>
+  </header>
+  <main>
+    <section class="intro">
+      <h1>Pictures from 2026</h1>
+      <p>August and September photographs from Uttoron events, compressed for this page and grouped so you can step through one event at a time. Earlier months of 2026 were not on the WhatsApp session that saved these files.</p>
+    </section>
+    <div id="filters" class="filters" role="tablist" aria-label="Events"></div>
+    <section class="stage" aria-label="Carousel">
+      <button class="nav prev" type="button" aria-label="Previous picture">‹</button>
+      <figure>
+        <img id="hero" alt="">
+        <figcaption>
+          <p id="count"></p>
+          <h2 id="caption"></h2>
+        </figcaption>
+      </figure>
+      <button class="nav next" type="button" aria-label="Next picture">›</button>
+    </section>
+    <div id="thumbs" class="thumbs"></div>
+  </main>
+  <footer>
+    <p>Uttoron · registered 2003 · Greater Seattle. <a href="https://www.uttoron.org">www.uttoron.org</a></p>
+  </footer>
+  <script src="app.js"></script>
+</body>
+</html>
