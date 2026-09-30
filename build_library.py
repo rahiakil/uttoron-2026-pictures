@@ -6,8 +6,9 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
+import cv2
+import numpy as np
 from PIL import Image, ImageOps
-import winocr
 
 ARCHIVE = Path(r"C:\Users\Parag\Documents\uttaron-archive")
 PHONE = Path(r"C:\Users\Parag\Documents\uttaron-phone-whatsapp")
@@ -109,15 +110,48 @@ def ocr_text(path, cache):
     return text
 
 
+COMMUNITY = re.compile(
+    r"uttoron|uttaron|uve|ecki|agomoni|ankita|sharad|deepaboli|bhoomi|bhumi|anjan",
+    re.I,
+)
+FACE_MODEL = SITE / ".face" / "face_detection_yunet_2023mar.onnx"
+FACE_URL = "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx"
+
+
+def face_model():
+    if not FACE_MODEL.exists():
+        FACE_MODEL.parent.mkdir(parents=True, exist_ok=True)
+        import urllib.request
+        urllib.request.urlretrieve(FACE_URL, FACE_MODEL)
+    return str(FACE_MODEL)
+
+
+def has_face(path):
+    data = np.fromfile(str(path), dtype=np.uint8)
+    image = cv2.imdecode(data, cv2.IMREAD_COLOR)
+    if image is None:
+        return False
+    height, width = image.shape[:2]
+    scale = 640 / max(width, height)
+    if scale < 1:
+        image = cv2.resize(image, (int(width * scale), int(height * scale)))
+        height, width = image.shape[:2]
+    if not hasattr(has_face, "detector"):
+        has_face.detector = cv2.FaceDetectorYN.create(face_model(), "", (width, height), 0.6, 0.3, 5000)
+    has_face.detector.setInputSize((width, height))
+    found, faces = has_face.detector.detect(image)
+    return bool(found) and faces is not None and len(faces) > 0
+
+
 def is_screenshot(path):
     try:
         with Image.open(path) as im:
-            w, h = im.size
+            width, height = im.size
     except Exception:
-        return False
-    if h == 0:
-        return False
-    ratio = w / h
+        return True
+    if height == 0:
+        return True
+    ratio = width / height
     return ratio < 0.62 or ratio > 1.85
 
 
@@ -147,42 +181,29 @@ def chat_items(cache):
         if not month.startswith("2026"):
             continue
         kind = (row.get("kind") or "image").lower()
-        event = row.get("event") or "Uttoron"
-        blob = " ".join([kind, event, row.get("caption") or "", row.get("nearby") or ""])
-        lane = special_lane(blob)
-        if kind == "ticket":
-            lane = ("tickets", "Tickets")
-        if lane is None and event_bucket(event) == "grant":
-            lane = ("internal-docs", "Internal docs")
-        if lane:
-            lane_id, lane_label = lane
-            event_id = slug(lane_label + "-" + event)
-            event_label = lane_label
-        else:
-            lane_id, lane_label = "events", "Events"
-            bucket = event_bucket(event)
-            if bucket == "grant":
-                lane_id, lane_label = "internal-docs", "Internal docs"
-            event_id = bucket
-            event_label = EVENT_LANE.get(bucket, event)
-        text = ocr_text(src, cache) if is_screenshot(src) else ""
-        if SECRET.search(text):
+        event = row.get("event") or ""
+        if not COMMUNITY.search(event):
             continue
-        found = special_lane(text)
-        if found and lane_id == "events":
-            lane_id, lane_label = found
-            event_id = slug(lane_label)
-            event_label = lane_label
+        if kind not in {"image", "stage"} or is_screenshot(src):
+            continue
+        bucket = event_bucket(event)
+        if bucket == "grant":
+            continue
+        event_id = bucket
+        event_label = EVENT_LANE.get(bucket, event)
+        faces = has_face(src)
+        who = "With a face" if faces else "No face"
         items.append({
             "src_path": src,
             "date": date,
             "month": month,
-            "lane": lane_id,
-            "laneLabel": lane_label,
+            "lane": "events",
+            "laneLabel": "Events",
             "event": event_id,
             "eventLabel": event_label,
-            "kind": kind,
-            "label": f"{event_label} · {date or month} · {kind}",
+            "faces": faces,
+            "kind": "photo",
+            "label": f"{event_label} · {date or month} · {who}",
         })
     return items
 
@@ -244,7 +265,7 @@ def main():
             cache = json.loads(CACHE.read_text(encoding="utf-8"))
         except Exception:
             cache = {}
-    items = chat_items(cache) + phone_items(cache)
+    items = chat_items(cache)
     CACHE.write_text(json.dumps(cache), encoding="utf-8")
     items.sort(key=lambda item: (item["date"], item["lane"], item["label"]))
     if MEDIA.exists():
@@ -267,6 +288,7 @@ def main():
             "laneLabel": item["laneLabel"],
             "event": item["event"],
             "eventLabel": item["eventLabel"],
+            "faces": bool(item.get("faces")),
             "kind": item["kind"],
             "label": item["label"],
         })
@@ -304,6 +326,16 @@ def main():
         title = MONTH_NAME.get(month[5:7], month)
         nodes.append({"id": month, "label": title, "type": "month", "count": count})
         links.append({"source": "2026", "target": month, "count": count})
+    face_count = sum(1 for item in published if item.get("faces"))
+    nodes.append({"id": "faces", "label": "With a face", "type": "lane", "count": face_count})
+    nodes.append({"id": "noface", "label": "No face", "type": "lane", "count": len(published) - face_count})
+    for month in months:
+        with_face = sum(1 for item in published if item["month"] == month and item.get("faces"))
+        without = sum(1 for item in published if item["month"] == month and not item.get("faces"))
+        if with_face:
+            links.append({"source": month, "target": "faces", "count": with_face})
+        if without:
+            links.append({"source": month, "target": "noface", "count": without})
     for group in groups:
         nodes.append({"id": group["id"], "label": group["label"], "type": "lane", "count": len(group["items"])})
         for month in months:

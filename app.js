@@ -58,6 +58,12 @@ function apply(list, chipId) {
 }
 
 function setGroup(id) {
+  if (id === "faces") return apply(allItems.filter(item => item.faces), id);
+  if (id === "noface") return apply(allItems.filter(item => !item.faces), id);
+  if (id.startsWith("event:")) {
+    const eventId = id.slice(6);
+    return apply(allItems.filter(item => item.event === eventId), id);
+  }
   const group = id === "all" ? null : groups.find(entry => entry.id === id);
   apply(group ? group.items : allItems, id);
 }
@@ -82,7 +88,9 @@ window.addEventListener("library-select", (event) => {
   const detail = event.detail || {};
   const list = allItems.filter(item => {
     if (detail.month && item.month !== detail.month) return false;
-    if (detail.lane && item.lane !== detail.lane) return false;
+    if (detail.lane === "faces" && !item.faces) return false;
+    if (detail.lane === "noface" && item.faces) return false;
+    if (detail.lane && detail.lane !== "faces" && detail.lane !== "noface" && item.lane !== detail.lane) return false;
     if (detail.eventId && item.event !== detail.eventId) return false;
     return true;
   });
@@ -96,9 +104,14 @@ fetch("manifest.json")
     allItems = groups.flatMap(group => group.items);
     const months = new Set(allItems.map(item => item.month).filter(Boolean));
     if (summary && data.count) {
-      summary.textContent = `${data.count} pictures from ${months.size} months in 2026. Events stay together. Tickets, product prompts, cues, and internal notes each have their own lane. Use the chart to zoom into a month or a lane.`;
+      summary.textContent = `${data.count} photographs from the Uttoron groups. Screenshots and pictures from other chats are not on this page. Pictures with a face are marked.`;
     }
-    chip("all", "All", allItems.length);
-    groups.forEach(group => chip(group.id, group.label, group.items.length));
+    const faceCount = allItems.filter(item => item.faces).length;
+    chip("all", "All pictures", allItems.length);
+    chip("faces", "With a face", faceCount);
+    chip("noface", "No face", allItems.length - faceCount);
+    groups.forEach(group => {
+      (group.events || []).forEach(event => chip("event:" + event.id, event.label, event.count));
+    });
     setGroup("all");
   });
