@@ -24,9 +24,16 @@
   <main>
     <section class="intro">
       <h1>Pictures from 2026</h1>
-      <p>August and September photographs from Uttoron events, compressed for this page and grouped so you can step through one event at a time. Earlier months of 2026 were not on the WhatsApp session that saved these files.</p>
+      <p id="summary">Photographs, tickets, product prompts, cues, and internal notes from the Uttoron WhatsApp archive and the phone, grouped so each kind stays in its own lane.</p>
     </section>
-    <div id="filters" class="filters" role="tablist" aria-label="Events"></div>
+    <section class="map-wrap" aria-label="How the year connects">
+      <div class="map-head">
+        <h2>How the year connects</h2>
+        <p>Scroll to zoom. Click a month, a lane, or an event to open just those pictures.</p>
+      </div>
+      <svg id="map" role="img" aria-label="Flow of 2026 months, lanes, and events"></svg>
+    </section>
+    <div id="filters" class="filters" role="tablist" aria-label="Lanes"></div>
     <section class="stage" aria-label="Carousel">
       <button class="nav prev" type="button" aria-label="Previous picture">‹</button>
       <figure>
@@ -43,6 +50,8 @@
   <footer>
     <p>Uttoron · registered 2003 · Greater Seattle. <a href="https://www.uttoron.org">www.uttoron.org</a></p>
   </footer>
+  <script src="d3.min.js"></script>
+  <script src="graph.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

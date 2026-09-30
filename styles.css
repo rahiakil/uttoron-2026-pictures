@@ -44,6 +44,17 @@ header .bar {
 h1, h2 { font-family: Nunito, "Segoe UI", sans-serif; font-weight: 800; letter-spacing: -0.03em; }
 h1 { font-size: clamp(2rem, 4vw, 3.1rem); margin: 0 0 0.3em; color: var(--deep); }
 .intro p { margin: 0; color: #5c4a3a; font-size: 1.08rem; }
+.map-wrap { padding: 1.2rem 4vw 0.2rem; }
+.map-head { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; flex-wrap: wrap; }
+.map-head h2 { margin: 0; color: var(--deep); font-size: 1.4rem; }
+.map-head p { margin: 0; color: #5c4a3a; }
+#map { width: 100%; height: 560px; background: var(--wash); border: 3px solid var(--orange); border-radius: 12px; margin-top: 0.7rem; cursor: grab; }
+#map text { font-family: Nunito, "Segoe UI", sans-serif; }
+#map .link { fill: none; stroke: #f0b27a; stroke-width: 1.4px; }
+#map .link.is-on { stroke: var(--deep); stroke-width: 2.4px; }
+#map .node circle { stroke: #fff; stroke-width: 2px; }
+#map .node.is-dim { opacity: 0.28; }
+#map .node.is-on circle { stroke: var(--deep); stroke-width: 3px; }
 .filters { display: flex; flex-wrap: wrap; gap: 0.45rem; padding: 1.2rem 6vw 0.4rem; }
 .filters button {
   border: 2px solid var(--orange);
@@ -110,7 +121,8 @@ footer a { color: var(--orange); }
 @media (max-width: 800px) {
   .stage { grid-template-columns: 1fr; padding: 0 1rem; }
   .nav { display: none; }
-  .intro, .filters, .thumbs, header .bar, .sub, footer { padding-left: 1rem; padding-right: 1rem; }
+  .intro, .filters, .thumbs, header .bar, .sub, footer, .map-wrap { padding-left: 1rem; padding-right: 1rem; }
   #hero { height: 56vh; }
+  #map { height: 420px; }
 }
 @media (prefers-reduced-motion: reduce) { #hero { transition: none; } }
