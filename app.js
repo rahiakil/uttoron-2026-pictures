@@ -58,8 +58,8 @@ function apply(list, chipId) {
 }
 
 function setGroup(id) {
-  if (id === "faces") return apply(allItems.filter(item => item.faces), id);
-  if (id === "noface") return apply(allItems.filter(item => !item.faces), id);
+  if (id === "faces") return apply(allItems.filter(item => item.faces && item.lane === "events"), id);
+  if (id === "noface") return apply(allItems.filter(item => !item.faces && item.lane === "events"), id);
   if (id.startsWith("event:")) {
     const eventId = id.slice(6);
     return apply(allItems.filter(item => item.event === eventId), id);
@@ -103,15 +103,17 @@ fetch("manifest.json")
     groups = data.groups || [];
     allItems = groups.flatMap(group => group.items);
     const months = new Set(allItems.map(item => item.month).filter(Boolean));
-    if (summary && data.count) {
-      summary.textContent = `${data.count} photographs from the Uttoron groups. Screenshots and pictures from other chats are not on this page. Pictures with a face are marked.`;
+    const shown = allItems.filter(item => item.lane === "events");
+    if (summary) {
+      summary.textContent = `${shown.length} photographs saved from the Uttoron WhatsApp groups. Each caption starts with WhatsApp. Pictures whose text is something else are set aside. August and September are the only months those chats still had.`;
     }
-    const faceCount = allItems.filter(item => item.faces).length;
-    chip("all", "All pictures", allItems.length);
-    chip("faces", "With a face", faceCount);
-    chip("noface", "No face", allItems.length - faceCount);
-    groups.forEach(group => {
+    chip("events", "Uttoron on WhatsApp", shown.length);
+    chip("faces", "With a face", shown.filter(item => item.faces).length);
+    chip("noface", "No face", shown.filter(item => !item.faces).length);
+    groups.filter(group => group.id === "events").forEach(group => {
       (group.events || []).forEach(event => chip("event:" + event.id, event.label, event.count));
     });
-    setGroup("all");
+    const aside = groups.find(group => group.id === "aside");
+    if (aside) chip("aside", "Screenshot from the chat", aside.items.length);
+    setGroup("events");
   });

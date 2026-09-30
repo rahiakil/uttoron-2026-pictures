@@ -37,11 +37,8 @@ EVENT_LANE = {
 }
 
 LANES = [
-    ("events", "Events"),
-    ("tickets", "Tickets"),
-    ("product-prompts", "Product prompts"),
-    ("cues", "Cues"),
-    ("internal-docs", "Internal docs"),
+    ("events", "Uttoron on WhatsApp"),
+    ("aside", "Not an Uttoron picture"),
 ]
 
 SECRET = re.compile(
@@ -91,7 +88,22 @@ def special_lane(text):
     return None
 
 
+ELSEWHERE = re.compile(
+    r"amazon|add to cart|inbox|vacuum|hospital|med bill|opening dues|camscanner|4culture|password",
+    re.I,
+)
+UTTORON_TEXT = re.compile(
+    r"uttoron|uttaron|উত্তর|durga|sharad|agomoni|ankita|puja|pujo|decoration|seattle",
+    re.I,
+)
+
+
+def looks_elsewhere(text):
+    return bool(ELSEWHERE.search(text or "")) and not UTTORON_TEXT.search(text or "")
+
+
 def ocr_text(path, cache):
+    import winocr
     key = str(path)
     stamp = path.stat().st_mtime
     hit = cache.get(key)
@@ -189,21 +201,27 @@ def chat_items(cache):
         bucket = event_bucket(event)
         if bucket == "grant":
             continue
-        event_id = bucket
-        event_label = EVENT_LANE.get(bucket, event)
+        text = ocr_text(src, cache)
+        if looks_elsewhere(text):
+            lane_id, lane_label = "aside", "Not an Uttoron picture"
+            event_id, event_label = "aside", "Set aside"
+        else:
+            lane_id, lane_label = "events", "Uttoron on WhatsApp"
+            event_id = bucket
+            event_label = EVENT_LANE.get(bucket, event)
         faces = has_face(src)
         who = "With a face" if faces else "No face"
         items.append({
             "src_path": src,
             "date": date,
             "month": month,
-            "lane": "events",
-            "laneLabel": "Events",
+            "lane": lane_id,
+            "laneLabel": lane_label,
             "event": event_id,
             "eventLabel": event_label,
             "faces": faces,
             "kind": "photo",
-            "label": f"{event_label} · {date or month} · {who}",
+            "label": f"WhatsApp · {event_label} · {date or month} · {who}",
         })
     return items
 
@@ -318,25 +336,29 @@ def main():
     ]}
     (SITE / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
 
-    nodes = [{"id": "2026", "label": "2026", "type": "year", "count": len(published)}]
+    shown = [item for item in published if item["lane"] == "events"]
+    nodes = [{"id": "2026", "label": "2026", "type": "year", "count": len(shown)}]
     links = []
-    months = sorted({item["month"] for item in published if item["month"]})
+    months = sorted({item["month"] for item in shown if item["month"]})
     for month in months:
-        count = sum(1 for item in published if item["month"] == month)
+        count = sum(1 for item in shown if item["month"] == month)
         title = MONTH_NAME.get(month[5:7], month)
         nodes.append({"id": month, "label": title, "type": "month", "count": count})
         links.append({"source": "2026", "target": month, "count": count})
-    face_count = sum(1 for item in published if item.get("faces"))
+    face_count = sum(1 for item in published if item.get("faces") and item["lane"] == "events")
+    shown = [item for item in published if item["lane"] == "events"]
     nodes.append({"id": "faces", "label": "With a face", "type": "lane", "count": face_count})
-    nodes.append({"id": "noface", "label": "No face", "type": "lane", "count": len(published) - face_count})
+    nodes.append({"id": "noface", "label": "No face", "type": "lane", "count": len(shown) - face_count})
     for month in months:
-        with_face = sum(1 for item in published if item["month"] == month and item.get("faces"))
-        without = sum(1 for item in published if item["month"] == month and not item.get("faces"))
+        with_face = sum(1 for item in shown if item["month"] == month and item.get("faces"))
+        without = sum(1 for item in shown if item["month"] == month and not item.get("faces"))
         if with_face:
             links.append({"source": month, "target": "faces", "count": with_face})
         if without:
             links.append({"source": month, "target": "noface", "count": without})
     for group in groups:
+        if group["id"] == "aside":
+            continue
         nodes.append({"id": group["id"], "label": group["label"], "type": "lane", "count": len(group["items"])})
         for month in months:
             count = sum(1 for item in group["items"] if item["month"] == month)
